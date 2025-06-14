@@ -6,7 +6,7 @@ admin.initializeApp();
 const db = admin.firestore();
 
 const adminIPs = ["YOUR.ADMIN.IP.ADDRESS"];
-const validCodes = ["21396", "74167", "52984", "60013"];
+const validCodes = ["21396", "74167", "52984", "60013", "47737", "82145"];
 
 exports.submitMessage = functions.https.onRequest((req, res) => {
   cors(req, res, async () => {
