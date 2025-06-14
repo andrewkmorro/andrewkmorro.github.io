@@ -20,7 +20,7 @@
     <p>leave a message for the next generation of prongs:</p>
 
     <div id="messageSection">
-      <textarea id="messageInput" placeholder="you can only leave one message and then you must prong someone else"></textarea><br>
+      <textarea id="messageInput" placeholder="you can only leave one message and then you must prong someone else - signing your name is optional"></textarea><br>
       <button onclick="submitMessage()">submit</button>
       <p id="status"></p>
     </div>
@@ -28,85 +28,52 @@
     <p>pass the fork</p>
     <p>you can prong a friend, leave it in a park, or hold onto it for years and prong someone else</p>
     <p>prong to your heart's content</p>
-<p></p>
     <p style="margin-top: 4px;">previous messages:</p>
     <ul id="messagesList"></ul>
   </div>
 </main>
 
 <script>
-  const validCodes = ["143", "committothebit"];
-  const adminCode = "committothebit";
   const projectId = "pronged-174c2";
   let currentCode = "";
 
-  function loadMessages() {
+  async function loadMessages() {
     const code = document.getElementById("codeInput").value.trim();
-    if (!validCodes.includes(code)) {
-      alert("That code isn’t valid.");
+    currentCode = code;
+
+    const res = await fetch(`https://us-central1-${projectId}.cloudfunctions.net/getMessages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code })
+    });
+
+    const data = await res.json();
+
+    if (data.error) {
+      alert(data.error);
       return;
     }
 
-    currentCode = code;
     document.getElementById("codeDisplay").textContent = code;
     document.getElementById("entryArea").style.display = "none";
     document.getElementById("codeArea").style.display = "block";
-
-    // Hide message input for admin
-    document.getElementById("messageSection").style.display = (code === adminCode) ? "none" : "block";
+    document.getElementById("messageSection").style.display = "block";
 
     const list = document.getElementById("messagesList");
     list.innerHTML = "";
 
-    if (code === adminCode) {
-      // Admin: get all messages from all codes
-      fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/messages`)
-        .then(res => res.json())
-        .then(data => {
-          if (!data.documents) {
-            list.innerHTML = "<li>No messages found.</li>";
-            return;
-          }
-
-          data.documents.forEach(doc => {
-            const codeId = doc.name.split("/").pop();
-            const messages = doc.fields?.messages?.arrayValue?.values || [];
-            messages.reverse().forEach(entry => {
-              const msg = entry.mapValue.fields;
-              const text = msg.text.stringValue;
-              const timestamp = new Date(parseInt(msg.timestamp.integerValue)).toLocaleString();
-              const li = document.createElement("li");
-              li.textContent = `[${codeId}] ${text} — ${timestamp}`;
-              list.appendChild(li);
-            });
-          });
-        })
-        .catch(() => {
-          list.innerHTML = "<li>Error loading messages.</li>";
-        });
-
+    const messages = data.messages || [];
+    if (messages.length === 0) {
+      list.innerHTML = "<li>This is a brand new fork.</li>";
     } else {
-      // Regular user: get messages for this code
-      fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/messages/${code}`)
-        .then(res => res.json())
-        .then(data => {
-          const messages = data.fields?.messages?.arrayValue?.values || [];
-          if (messages.length === 0) {
-            list.innerHTML = "<li>This is a brand new fork.</li>";
-          } else {
-            messages.reverse().forEach(entry => {
-              const msg = entry.mapValue.fields;
-              const text = msg.text.stringValue;
-              const timestamp = new Date(parseInt(msg.timestamp.integerValue)).toLocaleString();
-              const li = document.createElement("li");
-              li.textContent = `${text} — ${timestamp}`;
-              list.appendChild(li);
-            });
-          }
-        })
-        .catch(() => {
-          list.innerHTML = "<li>This is a brand new fork.</li>";
-        });
+      messages.forEach(entry => {
+        const text = entry.text;
+        const timestamp = new Date(entry.timestamp).toLocaleString();
+        const prefix = entry.code ? `[${entry.code}] ` : "";
+        const li = document.createElement("li");
+        li.textContent = `${prefix}${text} — ${timestamp}`;
+        list.appendChild(li);
+      });
     }
   }
 
@@ -117,32 +84,27 @@
       return;
     }
 
-    if (currentCode === adminCode) {
-      alert("Admin cannot post messages.");
-      return;
-    }
-
-    const cloudFunctionUrl = "https://us-central1-pronged-174c2.cloudfunctions.net/submitMessage";
+    const cloudFunctionUrl = `https://us-central1-${projectId}.cloudfunctions.net/submitMessage`;
 
     fetch(cloudFunctionUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code: currentCode, message })
     })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          document.getElementById("status").textContent = "Message posted!";
-          document.getElementById("messageInput").value = "";
-          loadMessages();
-        } else {
-          document.getElementById("status").textContent = data.error;
-        }
-      })
-      .catch(() => {
-        document.getElementById("status").textContent =
-          "Something went wrong submitting your message.";
-      });
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        document.getElementById("status").textContent = "Message posted!";
+        document.getElementById("messageInput").value = "";
+        loadMessages();
+      } else {
+        document.getElementById("status").textContent = data.error;
+      }
+    })
+    .catch(() => {
+      document.getElementById("status").textContent =
+        "Something went wrong submitting your message.";
+    });
   }
 </script>
 
