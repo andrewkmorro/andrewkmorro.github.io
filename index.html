@@ -29,8 +29,6 @@
 
     <p style="margin-top: 4px;">previous messages:</p>
     <ul id="messagesList"></ul>
-
-
   </div>
 </main>
 
@@ -71,7 +69,7 @@
           data.documents.forEach(doc => {
             const codeId = doc.name.split("/").pop();
             const messages = doc.fields?.messages?.arrayValue?.values || [];
-            messages.forEach(entry => {
+            messages.reverse().forEach(entry => {
               const msg = entry.mapValue.fields;
               const text = msg.text.stringValue;
               const timestamp = new Date(parseInt(msg.timestamp.integerValue)).toLocaleString();
@@ -94,7 +92,7 @@
           if (messages.length === 0) {
             list.innerHTML = "<li>This is a brand new fork.</li>";
           } else {
-            messages.forEach(entry => {
+            messages.reverse().forEach(entry => {
               const msg = entry.mapValue.fields;
               const text = msg.text.stringValue;
               const timestamp = new Date(parseInt(msg.timestamp.integerValue)).toLocaleString();
