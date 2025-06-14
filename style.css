@@ -47,6 +47,10 @@ main {
   padding: 40px 20px;
   max-width: 800px;
   margin: 0 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 footer {
@@ -55,4 +59,91 @@ footer {
   padding: 30px 20px;
   font-size: 14px;
   color: #474747;
+}
+
+/* === Code Message Portal Specific Styling === */
+
+#codeArea {
+  display: none;
+  width: 100%;
+  max-width: 600px;
+  margin-top: 20px;
+}
+
+#entryArea {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+#messageSection {
+  text-align: center;
+  max-width: 500px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+input[type="text"] {
+  width: 100%;
+  max-width: 125px;
+  padding: 4px;
+  margin: 12px 0;
+  font-family: inherit;
+  font-size: 16px;
+  border: 1px solid #474747;
+  background-color: #f7f4ea;
+  color: #333;
+}
+
+textarea {
+  width: 100%;
+  max-width: 500px; /* ✅ now it can be wider */
+  height: 100px;
+  resize: vertical;
+  padding: 4px;
+  margin: 12px 0;
+  font-family: inherit;
+  font-size: 16px;
+  border: 1px solid #474747;
+  background-color: #f7f4ea;
+  color: #333;
+  text-align: center;
+}
+
+
+textarea {
+  height: 100px;
+  resize: vertical;
+}
+
+button {
+  padding: 4px 8px;
+  font-family: inherit;
+  font-size: 16px;
+  background-color: #474747;
+  color: #f7f4ea;
+  border: none;
+  cursor: pointer;
+  margin: 10px auto;
+  display: block;
+  width: fit-content;
+  min-width: 125px;
+}
+
+button:hover {
+  background-color: #2e2e2e;
+}
+
+ul {
+  list-style-type: disc;
+  margin: 20px 0;
+  padding-left: 20px;
+  width: 100%;
+  max-width: 600px;
+}
+
+li {
+  margin-bottom: 8px;
+  word-wrap: break-word;
 }
