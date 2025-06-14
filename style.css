@@ -52,14 +52,15 @@ main {
 }
 
 #messagesList {
-  background-color: #f2f1ed; /* a bit lighter than your main background */
+  background-color: #f2f1ed;
   padding: 20px;
-  margin-top: 20px;
+  margin: 20px auto;        
   width: 100%;
   max-width: 500px;
   min-height: 80px;
-  text-align: left;
+  text-align: left;        
   border-radius: 6px;
+  box-sizing: border-box;
 }
 
 #messagesList li {
