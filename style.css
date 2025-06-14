@@ -12,35 +12,11 @@ body {
   color: #474747;
   margin: 0;
   padding: 0;
-
-  /* Centering */
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-}
-
-header {
-  background-color: #c2bcae;
-  padding: 40px 20px;
-  text-align: center;
-}
-
-nav {
-  margin: 30px 0;
-  text-align: center;
-}
-
-nav a {
-  text-decoration: none;
-  color: #474747;
-  margin: 0 20px;
-  font-weight: bold;
-}
-
-nav a:hover {
-  text-decoration: underline;
 }
 
 main {
@@ -53,23 +29,6 @@ main {
   align-items: center;
 }
 
-footer {
-  background-color: #c2bcae;
-  text-align: center;
-  padding: 30px 20px;
-  font-size: 14px;
-  color: #474747;
-}
-
-/* === Code Message Portal Specific Styling === */
-
-#codeArea {
-  display: none;
-  width: 100%;
-  max-width: 600px;
-  margin-top: 20px;
-}
-
 #entryArea {
   display: flex;
   flex-direction: column;
@@ -77,48 +36,68 @@ footer {
   width: 100%;
 }
 
+#codeArea {
+  display: none;
+  width: 100%;
+  max-width: 600px;
+  margin-top: 20px;
+  text-align: center;
+}
+
 #messageSection {
   text-align: center;
   max-width: 500px;
   width: 100%;
-  margin: 0 auto;
+  margin: 20px auto;
+}
+
+#messagesList {
+  background-color: #f2f1ed; /* a bit lighter than your main background */
+  padding: 20px;
+  margin-top: 20px;
+  width: 100%;
+  max-width: 500px;
+  min-height: 80px;
+  text-align: left;
+  border-radius: 6px;
+}
+
+#messagesList li {
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 0px solid #c2bcae;
 }
 
 input[type="text"] {
   width: 100%;
-  max-width: 125px;
-  padding: 4px;
+  max-width: 250px;
+  padding: 10px;
   margin: 12px 0;
   font-family: inherit;
   font-size: 16px;
-  border: 1px solid #474747;
-  background-color: #f7f4ea;
-  color: #333;
-}
-
-textarea {
-  width: 100%;
-  max-width: 500px; /* ✅ now it can be wider */
-  height: 100px;
-  resize: vertical;
-  padding: 4px;
-  margin: 12px 0;
-  font-family: inherit;
-  font-size: 16px;
-  border: 1px solid #474747;
+  border: 2px solid #474747;
   background-color: #f7f4ea;
   color: #333;
   text-align: center;
 }
 
-
 textarea {
+  width: 100%;
+  max-width: 500px;
   height: 100px;
+  padding: 10px;
+  margin: 12px 0;
+  font-family: inherit;
+  font-size: 16px;
+  border: 2px solid #474747;
+  background-color: #f7f4ea;
+  color: #333;
+  text-align: center;
   resize: vertical;
 }
 
 button {
-  padding: 4px 8px;
+  padding: 10px 20px;
   font-family: inherit;
   font-size: 16px;
   background-color: #474747;
@@ -141,6 +120,8 @@ ul {
   padding-left: 20px;
   width: 100%;
   max-width: 600px;
+  min-height: 80px;
+  text-align: left;
 }
 
 li {

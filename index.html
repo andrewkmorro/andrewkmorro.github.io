@@ -16,77 +16,81 @@
   </div>
 
   <div id="codeArea" style="display: none;">
-    <p>you have fork <span id="codeDisplay"></span> leave a message for the next holder of the fork</p>
-    <ul id="messagesList"></ul>
+    <p>you have fork <span id="codeDisplay"></span> — leave a message for the next holder of the fork</p>
 
     <div id="messageSection">
       <textarea id="messageInput" placeholder="you can only leave one message"></textarea><br>
       <button onclick="submitMessage()">submit</button>
       <p id="status"></p>
     </div>
+
+    <p style="margin-top: 20px; font-weight: bold;">previous messages:</p>
+    <ul id="messagesList"></ul>
+
     <p>you can prong a friend, leave it in a park, or hold onto it for years and prong someone else</p>
   </div>
 </main>
 
+<script>
+  const validCodes = ["143", "984", "fork23", "prong0", "spoon", "admin99"];
+  const adminCode = "admin99";
+  const projectId = "pronged-174c2";
+  let currentCode = "";
 
-  <script>
-    const validCodes = ["143", "984", "fork23", "prong0", "spoon", "admin99"];
-    const adminCode = "admin99";
-    const projectId = "pronged-174c2"; // Replace with your Firebase project ID
-    let currentCode = "";
+  function loadMessages() {
+    const code = document.getElementById("codeInput").value.trim();
+    if (!validCodes.includes(code)) {
+      alert("That code isn’t valid.");
+      return;
+    }
 
-    function loadMessages() {
-      const code = document.getElementById("codeInput").value.trim();
-      if (!validCodes.includes(code)) {
-        alert("That code isn’t valid.");
-        return;
-      }
+    currentCode = code;
+    document.getElementById("codeDisplay").textContent = code;
+    document.getElementById("entryArea").style.display = "none";
+    document.getElementById("codeArea").style.display = "block";
 
-      currentCode = code;
-      document.getElementById("codeDisplay").textContent = code;
-      document.getElementById("entryArea").style.display = "none";
-      document.getElementById("codeArea").style.display = "block";
+    // Hide message input for admin
+    document.getElementById("messageSection").style.display = (code === adminCode) ? "none" : "block";
 
-      // Hide message input for admin
-      document.getElementById("messageSection").style.display = (code === adminCode) ? "none" : "block";
-      document.getElementById("codeArea").style.display = "block";
+    const list = document.getElementById("messagesList");
+    list.innerHTML = "";
 
-      const list = document.getElementById("messagesList");
-      list.innerHTML = "";
+    if (code === adminCode) {
+      // Admin: get all messages from all codes
+      fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/messages`)
+        .then(res => res.json())
+        .then(data => {
+          if (!data.documents) {
+            list.innerHTML = "<li>No messages found.</li>";
+            return;
+          }
 
-      if (code === adminCode) {
-        // Admin: get all messages from all codes
-        fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/messages`)
-          .then(res => res.json())
-          .then(data => {
-            if (!data.documents) {
-              list.innerHTML = "<li>No messages found.</li>";
-              return;
-            }
-
-            data.documents.forEach(doc => {
-              const codeId = doc.name.split("/").pop();
-              const messages = doc.fields?.messages?.arrayValue?.values || [];
-              messages.forEach(entry => {
-                const msg = entry.mapValue.fields;
-                const text = msg.text.stringValue;
-                const timestamp = new Date(parseInt(msg.timestamp.integerValue)).toLocaleString();
-                const li = document.createElement("li");
-                li.textContent = `[${codeId}] ${text} — ${timestamp}`;
-                list.appendChild(li);
-              });
+          data.documents.forEach(doc => {
+            const codeId = doc.name.split("/").pop();
+            const messages = doc.fields?.messages?.arrayValue?.values || [];
+            messages.forEach(entry => {
+              const msg = entry.mapValue.fields;
+              const text = msg.text.stringValue;
+              const timestamp = new Date(parseInt(msg.timestamp.integerValue)).toLocaleString();
+              const li = document.createElement("li");
+              li.textContent = `[${codeId}] ${text} — ${timestamp}`;
+              list.appendChild(li);
             });
-          })
-          .catch(() => {
-            list.innerHTML = "<li>Error loading messages.</li>";
           });
+        })
+        .catch(() => {
+          list.innerHTML = "<li>Error loading messages.</li>";
+        });
 
-      } else {
-        // Regular user: get messages for just this code
-        fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/messages/${code}`)
-          .then(res => res.json())
-          .then(data => {
-            const messages = data.fields?.messages?.arrayValue?.values || [];
+    } else {
+      // Regular user: get messages for this code
+      fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/messages/${code}`)
+        .then(res => res.json())
+        .then(data => {
+          const messages = data.fields?.messages?.arrayValue?.values || [];
+          if (messages.length === 0) {
+            list.innerHTML = "<li>This is a brand new fork.</li>";
+          } else {
             messages.forEach(entry => {
               const msg = entry.mapValue.fields;
               const text = msg.text.stringValue;
@@ -95,48 +99,49 @@
               li.textContent = `${text} — ${timestamp}`;
               list.appendChild(li);
             });
-          })
-          .catch(() => {
-            list.innerHTML = "<li>No messages yet or this code doesn't exist.</li>";
-          });
-      }
-    }
-
-    function submitMessage() {
-      const message = document.getElementById("messageInput").value.trim();
-      if (!message) {
-        alert("Message can’t be empty.");
-        return;
-      }
-
-      if (currentCode === adminCode) {
-        alert("Admin cannot post messages.");
-        return;
-      }
-
-      const cloudFunctionUrl = "https://us-central1-pronged-174c2.cloudfunctions.net/submitMessage";
-
-      fetch(cloudFunctionUrl, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ code: currentCode, message })
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.success) {
-            document.getElementById("status").textContent = "Message posted!";
-            document.getElementById("messageInput").value = "";
-            loadMessages();
-          } else {
-            document.getElementById("status").textContent = data.error;
           }
         })
         .catch(() => {
-          document.getElementById("status").textContent =
-            "Something went wrong submitting your message.";
+          list.innerHTML = "<li>This is a brand new fork.</li>";
         });
     }
-  </script>
+  }
+
+  function submitMessage() {
+    const message = document.getElementById("messageInput").value.trim();
+    if (!message) {
+      alert("Message can’t be empty.");
+      return;
+    }
+
+    if (currentCode === adminCode) {
+      alert("Admin cannot post messages.");
+      return;
+    }
+
+    const cloudFunctionUrl = "https://us-central1-pronged-174c2.cloudfunctions.net/submitMessage";
+
+    fetch(cloudFunctionUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: currentCode, message })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById("status").textContent = "Message posted!";
+          document.getElementById("messageInput").value = "";
+          loadMessages();
+        } else {
+          document.getElementById("status").textContent = data.error;
+        }
+      })
+      .catch(() => {
+        document.getElementById("status").textContent =
+          "Something went wrong submitting your message.";
+      });
+  }
+</script>
 
 </body>
 </html>
