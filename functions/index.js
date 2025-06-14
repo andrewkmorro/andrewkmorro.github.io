@@ -5,64 +5,77 @@ const cors = require("cors")({origin: true});
 admin.initializeApp();
 const db = admin.firestore();
 
-const validCodes = ["21396", "74167"];
+const validCodes = ["143", "forkit", "zebra", "example1", "example2"];
 const adminIPs = ["YOUR.ADMIN.IP.ADDRESS"];
 
 exports.submitMessage = functions.https.onRequest((req, res) => {
   cors(req, res, async () => {
-    const ipHeader = req.headers["x-forwarded-for"];
-    const ip = ipHeader ? ipHeader.split(",")[0] : req.ip;
-    const {code, message} = req.body;
+    try {
+      const ipHeader = req.headers["x-forwarded-for"];
+      const ip = ipHeader ? ipHeader.split(",")[0].trim() : req.ip;
+      const {code, message, visitorId} = req.body;
 
-    if (!code || !message) {
-      return res.status(400).json({error: "Missing code or message"});
-    }
+      if (!code || !message || !visitorId) {
+        return res.status(400).json({
+          error: "Missing code, message, or visitor ID",
+        });
+      }
 
-    if (!validCodes.includes(code)) {
-      return res.status(403).json({error: "Invalid fork code."});
-    }
+      if (!validCodes.includes(code)) {
+        return res.status(403).json({
+          error: "Invalid fork code.",
+        });
+      }
 
-    const ipRef = db.collection("ipLogs").doc(`${code}_${ip}`);
-    const ipDoc = await ipRef.get();
+      const fingerprintRef = db
+          .collection("fingerprints")
+          .doc(`${code}_${visitorId}`);
+      const fingerprintDoc = await fingerprintRef.get();
 
-    if (ipDoc.exists) {
-      return res.status(403).json({
-        error: "You’ve already submitted a message for this fork.",
+      if (fingerprintDoc.exists) {
+        return res.status(403).json({
+          error:
+          "You've already submitted a message for this code from this device.",
+        });
+      }
+
+      const msgRef = db.collection("messages").doc(code);
+      await msgRef.set(
+          {
+            messages: admin.firestore.FieldValue.arrayUnion({
+              text: message,
+              timestamp: Date.now(),
+              ip,
+              visitorId,
+            }),
+          },
+          {merge: true},
+      );
+
+      await fingerprintRef.set({used: true});
+
+      return res.json({success: true});
+    } catch (error) {
+      console.error("submitMessage error:", error);
+      return res.status(500).json({
+        error: "Server error while submitting message.",
       });
     }
-
-    const msgRef = db.collection("messages").doc(code);
-
-    await msgRef.set(
-        {
-          messages: admin.firestore.FieldValue.arrayUnion({
-            text: message,
-            timestamp: Date.now(),
-            ip,
-          }),
-        },
-        {merge: true},
-    );
-
-    await ipRef.set({used: true});
-
-    return res.json({success: true});
   });
 });
 
 exports.getMessages = functions.https.onRequest((req, res) => {
   cors(req, res, async () => {
-    const ipHeader = req.headers["x-forwarded-for"];
-    const ip = ipHeader ? ipHeader.split(",")[0] : req.ip;
-    const {code} = req.body;
-
-    if (!code) {
-      return res.status(400).json({error: "Missing code."});
-    }
-
     try {
+      const ipHeader = req.headers["x-forwarded-for"];
+      const ip = ipHeader ? ipHeader.split(",")[0].trim() : req.ip;
+      const code = req.query.code;
+
+      if (!code) {
+        return res.status(400).json({error: "Missing code."});
+      }
+
       if (adminIPs.includes(ip)) {
-        // Admin mode: return all messages
         const snapshot = await db.collection("messages").get();
         const allMessages = [];
 
@@ -78,11 +91,9 @@ exports.getMessages = functions.https.onRequest((req, res) => {
           });
         });
 
-        // Sort all messages by timestamp descending
         allMessages.sort((a, b) => b.timestamp - a.timestamp);
         return res.json({messages: allMessages});
       } else {
-        // Regular user mode: return only messages for this fork
         const doc = await db.collection("messages").doc(code).get();
         if (!doc.exists || !doc.data().messages) {
           return res.json({messages: []});
@@ -93,8 +104,10 @@ exports.getMessages = functions.https.onRequest((req, res) => {
         return res.json({messages});
       }
     } catch (err) {
-      console.error("Error fetching messages:", err);
-      return res.status(500).json({error: "Server error."});
+      console.error("getMessages error:", err);
+      return res.status(500).json({
+        error: "Server error while fetching messages.",
+      });
     }
   });
 });
