@@ -1,94 +1,122 @@
-const projectId = "pronged-174c2";
-let currentCode = "";
-let visitorId = "";
+const functions = require("firebase-functions");
+const admin = require("firebase-admin");
+const cors = require("cors")({origin: true});
 
-// Hardcoded valid fork codes
-const validCodes = ["21396", "74167"];
+admin.initializeApp();
+const db = admin.firestore();
 
-// Load FingerprintJS
-FingerprintJS.load().then(fp => {
-  fp.get().then(result => {
-    visitorId = result.visitorId;
+const adminIPs = ["YOUR.ADMIN.IP.ADDRESS"];
+const validCodes = ["21396", "74167", "52984", "60013"];
+
+exports.submitMessage = functions.https.onRequest((req, res) => {
+  cors(req, res, async () => {
+    const ipHeader = req.headers["x-forwarded-for"];
+    const ip = ipHeader ? ipHeader.split(",")[0] : req.ip;
+    const {code, message, visitorId} = req.body;
+
+    if (!code || !message || !visitorId) {
+      return res.status(400).json({
+        error: "Missing code, message, or visitor ID",
+      });
+    }
+
+    if (!validCodes.includes(code)) {
+      return res.status(403).json({
+        error: "Invalid fork code.",
+      });
+    }
+
+    try {
+      const now = Date.now();
+      const fingerprintRef = db
+          .collection("fingerprints")
+          .doc(`${code}_${visitorId}`);
+      const fingerprintDoc = await fingerprintRef.get();
+
+      if (fingerprintDoc.exists) {
+        const lastUsed = fingerprintDoc.data().timestamp || 0;
+        const daysSince = (now - lastUsed) / (1000 * 60 * 60 * 24);
+
+        if (daysSince < 30) {
+          const daysRemaining = Math.ceil(30 - daysSince);
+          return res.status(403).json({
+            error:
+              `You can only submit once every 30 days for this code. ` +
+              `Try again in ${daysRemaining} day(s).`,
+          });
+        }
+      }
+
+      const msgRef = db.collection("messages").doc(code);
+
+      await msgRef.set(
+          {
+            messages: admin.firestore.FieldValue.arrayUnion({
+              text: message,
+              timestamp: now,
+              ip,
+              visitorId,
+            }),
+          },
+          {merge: true},
+      );
+
+      await fingerprintRef.set({timestamp: now});
+
+      return res.json({success: true});
+    } catch (err) {
+      console.error("Error submitting message:", err);
+      return res.status(500).json({error: "Server error."});
+    }
   });
 });
 
-function isValidCode(code) {
-  return validCodes.includes(code);
-}
+exports.getMessages = functions.https.onRequest((req, res) => {
+  cors(req, res, async () => {
+    const ipHeader = req.headers["x-forwarded-for"];
+    const ip = ipHeader ? ipHeader.split(",")[0] : req.ip;
+    const code = req.query.code;
 
-async function loadMessages() {
-  const code = document.getElementById("codeInput").value.trim();
+    if (!code) {
+      return res.status(400).json({error: "Missing code."});
+    }
 
-  if (!code) {
-    alert("Please enter a fork code.");
-    return;
-  }
+    if (!validCodes.includes(code)) {
+      return res.status(403).json({error: "Invalid fork code."});
+    }
 
-  if (!isValidCode(code)) {
-    alert("That code isn’t valid.");
-    return;
-  }
+    try {
+      if (adminIPs.includes(ip)) {
+        const snapshot = await db.collection("messages").get();
+        const allMessages = [];
 
-  currentCode = code;
-  document.getElementById("codeDisplay").textContent = code;
-  document.getElementById("entryArea").style.display = "none";
-  document.getElementById("codeArea").style.display = "block";
-
-  const list = document.getElementById("messagesList");
-  list.innerHTML = "";
-
-  fetch(`https://us-central1-${projectId}.cloudfunctions.net/getMessages?code=${code}`)
-    .then(res => res.json())
-    .then(data => {
-      const messages = data.messages || [];
-      if (messages.length === 0) {
-        list.innerHTML = "<li>This is a brand new fork.</li>";
-      } else {
-        messages.forEach(entry => {
-          const text = entry.text;
-          const timestamp = new Date(entry.timestamp).toLocaleString();
-          const prefix = entry.code ? `[${entry.code}] ` : "";
-          const li = document.createElement("li");
-          li.textContent = `${prefix}${text} — ${timestamp}`;
-          list.appendChild(li);
+        snapshot.forEach((doc) => {
+          const codeId = doc.id;
+          const messages = doc.data().messages || [];
+          messages.forEach((entry) => {
+            allMessages.push({
+              code: codeId,
+              text: entry.text,
+              timestamp: entry.timestamp,
+            });
+          });
         });
-      }
-    })
-    .catch(() => {
-      list.innerHTML = "<li>forkive me! error loading messages.</li>";
-    });
-}
 
-function submitMessage() {
-  const message = document.getElementById("messageInput").value.trim();
-  if (!message) {
-    alert("Message can’t be empty.");
-    return;
-  }
-
-  if (!visitorId) {
-    alert("oh no! forkive me! please try again");
-    return;
-  }
-
-  const cloudFunctionUrl = `https://us-central1-${projectId}.cloudfunctions.net/submitMessage`;
-
-  fetch(cloudFunctionUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ code: currentCode, message, visitorId })
-  })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        document.getElementById("status").textContent = "Message posted!";
-        document.getElementById("messageInput").value = "";
-        loadMessages();
+        allMessages.sort((a, b) => b.timestamp - a.timestamp);
+        return res.json({messages: allMessages});
       } else {
-        document.getElementById("status").textContent = data.error;
+        const doc = await db.collection("messages").doc(code).get();
+        if (!doc.exists || !doc.data().messages) {
+          return res.json({messages: []});
+        }
+        const messages = doc
+            .data()
+            .messages.sort((a, b) => b.timestamp - a.timestamp);
+        return res.json({messages});
       }
-    })
-    .catch(() => {
-      document.getElementById("status").textContent = "there's a spoon in the code! your message was sabotaged. try again.";
-    });
-}
+    } catch (err) {
+      console.error("Error fetching messages:", err);
+      return res.status(500).json({error: "Server error."});
+    }
+  });
+});

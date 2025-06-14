@@ -5,8 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>get pronged</title>
   <link rel="stylesheet" href="style.css" />
-  <link rel="icon" href="data:," />
-  <script src="https://openfpcdn.io/fingerprintjs/v3/fingerprint.min.js"></script>
+  <script src="https://openfpcdn.io/fingerprintjs/v3"></script>
 </head>
 <body>
 
@@ -40,30 +39,17 @@
   let currentCode = "";
   let visitorId = "";
 
-  // Hardcoded fork codes — you can update this list as needed
-  const validCodes = ["21396", "74167", "abc123", "fork2025"];
-
-  // Load FingerprintJS
+  // Load FingerprintJS and capture the visitorId
   FingerprintJS.load().then(fp => {
     fp.get().then(result => {
       visitorId = result.visitorId;
     });
   });
 
-  function isValidCode(code) {
-    return validCodes.includes(code);
-  }
-
   async function loadMessages() {
     const code = document.getElementById("codeInput").value.trim();
-
     if (!code) {
       alert("Please enter a fork code.");
-      return;
-    }
-
-    if (!isValidCode(code)) {
-      alert("That code isn’t valid.");
       return;
     }
 
