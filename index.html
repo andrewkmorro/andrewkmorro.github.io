@@ -21,7 +21,7 @@
     <p>leave a message for the next generation of prongs:</p>
 
     <div id="messageSection">
-      <textarea id="messageInput" placeholder="you can only leave one message per month - signing is optional"></textarea><br>
+      <textarea id="messageInput" placeholder="you can only leave one message per month — signing is optional"></textarea><br>
       <button onclick="submitMessage()">submit</button>
       <p id="status"></p>
     </div>
@@ -39,7 +39,7 @@
   let currentCode = "";
   let visitorId = "";
 
-  // Load fingerprint on page load
+  // Load FingerprintJS and capture the visitorId
   FingerprintJS.load().then(fp => {
     fp.get().then(result => {
       visitorId = result.visitorId;
@@ -84,7 +84,7 @@
         }
       })
       .catch(() => {
-        list.innerHTML = "<li>Error loading messages.</li>";
+        list.innerHTML = "<li>forkive me! error loading messages.</li>";
       });
   }
 
@@ -96,7 +96,7 @@
     }
 
     if (!visitorId) {
-      alert("Device verification failed. Please refresh and try again.");
+      alert("oh no! forkive me! please try again");
       return;
     }
 
@@ -118,7 +118,7 @@
         }
       })
       .catch(() => {
-        document.getElementById("status").textContent = "Something went wrong submitting your message.";
+        document.getElementById("status").textContent = "there's a spoon in the code! your message was sabotaged. try again.";
       });
   }
 </script>
